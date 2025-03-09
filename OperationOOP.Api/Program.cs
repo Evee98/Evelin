@@ -1,7 +1,7 @@
-
 using Microsoft.Extensions.Options;
 using OperationOOP.Api.Endpoints;
 using OperationOOP.Core.Data;
+using OperationOOP.Core.Services;
 
 namespace OperationOOP.Api
 {
@@ -11,10 +11,8 @@ namespace OperationOOP.Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            // Lägger till tjänster i containern
             builder.Services.AddAuthorization();
-
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(options =>
             {
@@ -22,11 +20,13 @@ namespace OperationOOP.Api
                 options.InferSecuritySchemes();
             });
 
+            // Registrerar IDatabase och BonsaiManager som tjänster
             builder.Services.AddSingleton<IDatabase, Database>();
+            builder.Services.AddScoped<BonsaiManager>(); // Ny
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            // Konfigurerar HTTP-request-pipeline
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
@@ -34,11 +34,8 @@ namespace OperationOOP.Api
             }
 
             app.UseHttpsRedirection();
-
             app.UseAuthorization();
-
             app.MapEndpoints<Program>();
-
             app.Run();
         }
     }

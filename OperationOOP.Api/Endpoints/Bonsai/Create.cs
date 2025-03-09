@@ -1,39 +1,42 @@
-﻿namespace OperationOOP.Api.Endpoints;
-public class CreateBonsai : IEndpoint
+﻿using Microsoft.Extensions.Options;
+using OperationOOP.Api.Endpoints;
+using OperationOOP.Core.Data;
+using OperationOOP.Core.Services;
+
+namespace OperationOOP.Api
 {
-    public static void MapEndpoint(IEndpointRouteBuilder app) => app
-        .MapPost("/bonsais", Handle)
-        .WithSummary("Bonsai trees");
-
-    public record Request(
-        string Name,
-        string Species,
-        int AgeYears,
-        DateTime LastWatered,
-        DateTime LastPruned,
-        BonsaiStyle Style,
-        CareLevel CareLevel
-        );
-    public record Response(int id);
-
-    private static Ok<Response> Handle(Request request, IDatabase db)
+    public class Program
     {
-        var bonsai = new Bonsai();
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
 
-        bonsai.Id = db.Bonsais.Any()
-            ? db.Bonsais.Max(bonsai => bonsai.Id) + 1
-            : 1;
-        bonsai.Name = request.Name;
-        bonsai.Species = request.Species;
-        bonsai.AgeYears = request.AgeYears;
-        bonsai.LastWatered = request.LastWatered;
-        bonsai.LastPruned = request.LastPruned;
-        bonsai.Style = request.Style;
-        bonsai.CareLevel = request.CareLevel;
+            // Lägger till tjänster i containern
+            builder.Services.AddAuthorization();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.CustomSchemaIds(type => type.FullName?.Replace('+', '.'));
+                options.InferSecuritySchemes();
+            });
 
-        db.Bonsais.Add(bonsai);
+            // Registrerar IDatabase och BonsaiManager som tjänster
+            builder.Services.AddSingleton<IDatabase, Database>();
+            builder.Services.AddScoped<BonsaiManager>(); // Ny
 
-        return TypedResults.Ok(new Response(bonsai.Id));
+            var app = builder.Build();
+
+            // Konfigurerar HTTP-request-pipeline
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
+
+            app.UseHttpsRedirection();
+            app.UseAuthorization();
+            app.MapEndpoints<Program>();
+            app.Run();
+        }
     }
 }
-
