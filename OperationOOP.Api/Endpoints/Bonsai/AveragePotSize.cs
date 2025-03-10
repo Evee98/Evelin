@@ -19,4 +19,4 @@ public class AveragePotSize : IEndpoint
         var averageSize = manager.CalculateAveragePotSize();
         return new Response(averageSize);
     }
-}s
+}

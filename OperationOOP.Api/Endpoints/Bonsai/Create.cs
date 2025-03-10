@@ -1,42 +1,65 @@
-﻿using Microsoft.Extensions.Options;
-using OperationOOP.Api.Endpoints;
-using OperationOOP.Core.Data;
-using OperationOOP.Core.Services;
+﻿namespace OperationOOP.Api.Endpoints;
 
-namespace OperationOOP.Api
+public class CreateBonsai : IEndpoint
 {
-    public class Program
+    // Mappar endpointen till en POST-förfrågan
+    public static void MapEndpoint(IEndpointRouteBuilder app) => app
+        .MapPost("/bonsais", Handle)
+        .WithSummary("Create a new bonsai tree");
+
+    // Request-klass för att hantera inkommande data
+    public record Request(
+        string Name,
+        string SpeciesName, // Namn på trädarten
+        int AgeYears,
+        DateTime LastWatered,
+        DateTime LastPruned,
+        BonsaiStyle Style,
+        CareLevel CareLevel,
+        string PotMaterial, // Material för krukan
+        double PotSize // Storlek på krukan
+    );
+
+    // Response-klass för att strukturera svaret
+    public record Response(int Id);
+
+    // Hanterar POST-förfrågan
+    private static Ok<Response> Handle(Request request, IDatabase db)
     {
-        public static void Main(string[] args)
+        // Skapar en ny TreeSpecies-instans
+        var species = new TreeSpecies
         {
-            var builder = WebApplication.CreateBuilder(args);
+            Id = db.Bonsais.Any() ? db.Bonsais.Max(b => b.Id) + 1 : 1, // Temporärt ID
+            Name = request.SpeciesName,
+            Description = "Beskrivning saknas" // Kan utökas med mer information
+        };
 
-            // Lägger till tjänster i containern
-            builder.Services.AddAuthorization();
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen(options =>
-            {
-                options.CustomSchemaIds(type => type.FullName?.Replace('+', '.'));
-                options.InferSecuritySchemes();
-            });
+        // Skapar en ny BonsaiPot-instans
+        var pot = new BonsaiPot
+        {
+            Id = db.Bonsais.Any() ? db.Bonsais.Max(b => b.Id) + 1 : 1, // Temporärt ID
+            Material = request.PotMaterial,
+            Size = request.PotSize
+        };
 
-            // Registrerar IDatabase och BonsaiManager som tjänster
-            builder.Services.AddSingleton<IDatabase, Database>();
-            builder.Services.AddScoped<BonsaiManager>(); // Ny
+        // Skapar en ny Bonsai-instans
+        var bonsai = new Bonsai
+        {
+            Id = db.Bonsais.Any() ? db.Bonsais.Max(b => b.Id) + 1 : 1,
+            Name = request.Name,
+            Species = species, // Tilldelar TreeSpecies-instansen
+            AgeYears = request.AgeYears,
+            LastWatered = request.LastWatered,
+            LastPruned = request.LastPruned,
+            Style = request.Style,
+            CareLevel = request.CareLevel,
+            Pot = pot // Tilldelar BonsaiPot-instansen
+        };
 
-            var app = builder.Build();
+        // Lägger till det nya bonsaiträdet i databasen
+        db.Bonsais.Add(bonsai);
 
-            // Konfigurerar HTTP-request-pipeline
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
-
-            app.UseHttpsRedirection();
-            app.UseAuthorization();
-            app.MapEndpoints<Program>();
-            app.Run();
-        }
+        // Returnerar ID:t för det skapade bonsaiträdet
+        return TypedResults.Ok(new Response(bonsai.Id));
     }
 }
